@@ -1,10 +1,18 @@
 const https = require("https");
-const Eris = require("eris");
+const token = require("./token.js");
 
 // BOT_TOKEN は 自身が作成したBotの Bot token の文字を記述します。
-var bot = new Eris(
-  "NDgzNTcxOTA2Mzk4NzgxNDYw.DmVakQ.3OfLopHjoC0eEseQZeZGHfyFsoI"
-);
+// token.jsでは以下のコードが書かれている
+/*
+const Eris = require("eris");
+
+exports.bot = () => {
+  const bot = new Eris("YOUR_TOKEN");
+  return bot;
+};
+*/
+
+let bot = token.bot();
 
 // APIのURL
 const url = "https://spla2.yuu26.com/coop/schedule";
@@ -14,13 +22,13 @@ const ChannelName = "ハイカラスクエア";
 
 https
   .get(url, function(res) {
-    var body = "";
+    let body = "";
     res.setEncoding("utf8");
     res.on("data", function(chunk) {
       body += chunk;
     });
     res.on("end", function(chunk) {
-      // body の値を json としてパースしている
+      // body の値を json としてパース
       res = JSON.parse(body);
       response = res.result;
     });
@@ -30,41 +38,42 @@ https
   });
 
 bot.on("ready", () => {
-  // bot が準備できたら呼び出されるイベントです。
+  // bot が準備できたら呼び出される
   //console.log("Ready!");
 
-  // 全サーバに送り出す処理
-  const promise = new Promise((resolve, reject) => {
-    bot.guilds.forEach(guild => {
-      guild.channels.forEach(channel => {
-        if (channel.name === ChannelName) {
-          // この辺りでresolve必要っぽそう
-          const content = generateShiftFormat(response[0]);
-          resolve(bot.createMessage(channel.id, content));
-        }
+  const now = new Date();
+  const start = new Date(response[0].start);
+  if (
+    (now.getTime() + 65 * 60 * 1000 >= start.getTime() &&
+      now.getTime() + 5 * 60 * 1000 <= start.getTime()) ||
+    now.getTime() + 11.9 * 60 * 60 * 1000 <= start.getTime()
+  ) {
+    // 全サーバに送り出す処理
+    const promise = new Promise((resolve, reject) => {
+      bot.guilds.forEach(guild => {
+        guild.channels.forEach(channel => {
+          if (channel.name === ChannelName) {
+            // この辺りでresolve必要っぽそう
+            const content = generateShiftFormat(response[0]);
+            resolve(bot.createMessage(channel.id, content));
+          }
+        });
       });
     });
-  });
 
-  // 順番に処理
-  promise
-    .then(() => {
-      bot.disconnect();
-      process.exit(0);
-    })
-    .catch(e => {
-      console.log(e);
-      process.exit(1);
-    });
-});
-
-bot.on("messageCreate", msg => {
-  // 誰かがメッセージ(チャット)を発言した時に呼び出されるイベントです。
-  if (msg.content === "!ping") {
-    // '!Ping' というメッセージを受け取ったら 'Pong!' と発言する。
-    bot.createMessage(msg.channel.id, "Pong!");
-  } else if (msg.content === "!pong") {
-    // '!Pong' というメッセージを受け取ったら 'Ping!' と発言する。
+    // 順番に処理
+    promise
+      .then(() => {
+        bot.disconnect();
+        process.exit(0);
+      })
+      .catch(e => {
+        console.log(e);
+        process.exit(1);
+      });
+  } else {
+    bot.disconnect();
+    process.exit(0);
   }
 });
 
@@ -78,6 +87,14 @@ const generateShiftFormat = data => {
   const end = new Date(data.end);
   const start_f = datetostr(start, "MM/DD(WW) hh:mm", false);
   const end_f = datetostr(end, "MM/DD(WW) hh:mm", false);
+  let msg;
+  if (now.getTime() >= start.getTime()) {
+    msg = "ただいま募集中のシフトのお知らせです";
+  } else if (now.getTime() + 60 * 60 * 1000 > start.getTime()) {
+    msg = "まもなく始まるシフトのお知らせです";
+  } else {
+    msg = "次のシフトのお知らせです";
+  }
   const embeds = {
     color: parseInt("e55833", 16),
     image: {
@@ -106,6 +123,7 @@ const generateShiftFormat = data => {
     ]
   };
   const content = {
+    content: msg,
     embed: embeds
   };
 
@@ -113,26 +131,26 @@ const generateShiftFormat = data => {
 };
 
 // 日付のフォーマット
-function datetostr(date, format, is12hours) {
-  var weekday = ["日", "月", "火", "水", "木", "金", "土"];
+const datetostr = (date, format, is12hours) => {
+  let wdays = ["日", "月", "火", "水", "木", "金", "土"];
   if (!format) {
     format = "YYYY/MM/DD(WW) hh:mm:dd";
   }
-  var year = date.getFullYear();
-  var month = date.getMonth() + 1;
-  var day = date.getDate();
-  var weekday = weekday[date.getDay()];
-  var hours = date.getHours();
-  var minutes = date.getMinutes();
-  var secounds = date.getSeconds();
+  let year = date.getFullYear();
+  let month = date.getMonth() + 1;
+  let day = date.getDate();
+  let weekday = wdays[date.getDay()];
+  let hours = date.getHours();
+  let minutes = date.getMinutes();
+  let secounds = date.getSeconds();
 
-  var ampm = hours < 12 ? "AM" : "PM";
+  let ampm = hours < 12 ? "AM" : "PM";
   if (is12hours) {
     hours = hours % 12;
     hours = hours != 0 ? hours : 12; // 0時は12時と表示する
   }
 
-  var replaceStrArray = {
+  let replaceStrArray = {
     YYYY: year,
     Y: year,
     MM: ("0" + month).slice(-2),
@@ -149,12 +167,12 @@ function datetostr(date, format, is12hours) {
     AP: ampm
   };
 
-  var replaceStr = "(" + Object.keys(replaceStrArray).join("|") + ")";
-  var regex = new RegExp(replaceStr, "g");
+  let replaceStr = "(" + Object.keys(replaceStrArray).join("|") + ")";
+  let regex = new RegExp(replaceStr, "g");
 
   ret = format.replace(regex, function(str) {
     return replaceStrArray[str];
   });
 
   return ret;
-}
+};
