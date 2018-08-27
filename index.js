@@ -18,7 +18,7 @@ let bot = token.bot();
 const url = "https://spla2.yuu26.com/coop/schedule";
 
 let response;
-const ChannelName = "ハイカラスクエア";
+const ChannelName = "クマサン商会";
 
 https
   .get(url, function(res) {
@@ -46,7 +46,8 @@ bot.on("ready", () => {
   if (
     (now.getTime() + 65 * 60 * 1000 >= start.getTime() &&
       now.getTime() + 5 * 60 * 1000 <= start.getTime()) ||
-    now.getTime() + 11.9 * 60 * 60 * 1000 <= start.getTime()
+    (now.getTime() + 11.9 * 60 * 60 * 1000 <= start.getTime() &&
+      now.getTime() + 12.5 * 60 * 60 * 1000 <= start.getTime())
   ) {
     // 全サーバに送り出す処理
     const promise = new Promise((resolve, reject) => {
