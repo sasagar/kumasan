@@ -4,7 +4,10 @@
   "description": "Splatoon2のサーモンランのスケジュールをお知らせするDiscord用Bot",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "zip": "zip --quiet -r kumasan.zip index.js token.js node_modules/",
+    "upload": "aws lambda update-function-code --function-name kumasan --zip-file fileb://./kumasan.zip",
+    "deploy": "npm run zip && npm run upload && rm -f ./kumasan.zip"
   },
   "repository": {
     "type": "git",
