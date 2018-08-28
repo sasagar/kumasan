@@ -50,6 +50,9 @@ exports.handler = (event, context) => {
     const end = new Date(response[0].end);
     const nextStart = new Date(response[1].start);
     const nextEnd = new Date(response[1].end);
+    console.log("now: " + now.getTime());
+    console.log("start: " + start.getTime());
+    console.log("end: " + end.getTime());
     let msg;
     // 分岐条件はLambdaの起動時間・多少のブレを考慮して幅を持たせている感じ
     if (
@@ -63,11 +66,21 @@ exports.handler = (event, context) => {
     } else if (
       // 終了前2時間 (endが今から118分後～122分後)
       now.getTime() + 122 * 60 * 1000 >= end.getTime() &&
-      now.getTime() + 118 * 60 * 1000 >= end.getTime()
+      now.getTime() + 118 * 60 * 1000 <= end.getTime()
     ) {
       console.log("終了2時間前処理");
       msg = "まもなくシフトが終了します。";
       sendMessage(response[0], msg);
+      /*
+    } else if (
+      // 終了前2時間 (endが今から88分後～92分後)
+      now.getTime() + 92 * 60 * 1000 >= end.getTime() &&
+      now.getTime() + 88 * 60 * 1000 <= end.getTime()
+    ) {
+      console.log("終了90分前処理");
+      msg = "まもなくシフトが終了します。";
+      sendMessage(response[0], msg);
+			*/
     } else if (
       // 終了時 (endが今から2分前～2分後)
       now.getTime() - 2 * 60 * 1000 >= end.getTime() &&
@@ -75,6 +88,7 @@ exports.handler = (event, context) => {
     ) {
       console.log("終了時処理");
       msg = "シフトが終了しましたので、次のシフトのお知らせです。";
+      // 次のシフトをお知らせ
       sendMessage(response[1], msg);
     } else {
       console.log("通知なし");
@@ -95,14 +109,13 @@ exports.handler = (event, context) => {
   bot.connect();
 
   // exitまでの大まかな処理
-  const sendMessage = res => {
+  const sendMessage = (res, msg) => {
     const promise = new Promise((resolve, reject) => {
       bot.guilds.forEach(guild => {
         guild.channels.forEach(channel => {
-          console.log(guild.id);
           if (channel.name === ChannelName) {
             // この辺りでresolve必要っぽそう
-            const content = generateShiftFormat(res);
+            const content = generateShiftFormat(res, msg);
             resolve(bot.createMessage(channel.id, content));
           }
         });
