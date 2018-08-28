@@ -21,6 +21,9 @@ let response;
 const ChannelName = "クマサン商会";
 
 exports.handler = (event, context) => {
+  // lambdaでは保持される部分があるので、短時間Cronに耐えられるよう毎回handlerないでbotを生成
+  let bot = token.bot();
+
   https
     .get(url, function(res) {
       let body = "";
@@ -38,7 +41,7 @@ exports.handler = (event, context) => {
       console.log(e.message);
     });
 
-  bot.on("ready", () => {
+  bot.on("ready", async () => {
     // bot が準備できたら呼び出される
     //console.log("Ready!");
 
@@ -75,10 +78,18 @@ exports.handler = (event, context) => {
       sendMessage(response[1], msg);
     } else {
       console.log("通知なし");
-      bot.disconnect();
+      await bot.disconnect();
       context.succeed("正常終了");
     }
   });
+
+  // disconnect時 (上手く拾えてない)
+  /*
+  bot.on("disconnect", () => {
+    console.log("test");
+    context.succeed("正常終了");
+  });
+*/
 
   // Discord に接続します。
   bot.connect();
@@ -103,11 +114,11 @@ exports.handler = (event, context) => {
       .then(() => {
         bot.disconnect();
         context.succeed("正常終了");
-        process.exit(0);
       })
       .catch(e => {
         context.fail(e);
         process.exit(1);
+        bot.disconnect();
       });
   };
 
