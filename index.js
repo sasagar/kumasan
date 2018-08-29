@@ -58,9 +58,6 @@ exports.handler = (event, context) => {
 		//const nextStart = new Date(response[1].start);
 		//const nextEnd = new Date(response[1].end);
 		console.log('now: ' + now.getTime());
-		console.log('now+1h: ' + (now.getTime() + 60 * 60 * 1000));
-		console.log('now+2h: ' + (now.getTime() + 120 * 60 * 1000));
-		console.log('now+12h: ' + (now.getTime() + 12 * 60 * 60 * 1000));
 		console.log('start: ' + start.getTime());
 		console.log('end: ' + end.getTime());
 
@@ -73,6 +70,8 @@ exports.handler = (event, context) => {
 			}
 		};
 		let item = await getFromDynamo(params);
+		console.log('flag: ' + item.flag);
+		console.log('nextTime: ' + item.nextTime);
 
 		let msg;
 
@@ -82,7 +81,7 @@ exports.handler = (event, context) => {
 			case 'anHour2Start':
 				console.log('開始1時間前処理');
 				msg =
-						'やあ  もうすぐ  アルバイトの募集を  はじめるよ  希望者は  そろそろ準備しておくとい';
+						'やあ  もうすぐ  アルバイトの募集を  はじめるよ  希望者は  そろそろ準備しておくといい';
 				sendMessage(response[0], msg);
 				updateDynamo(start.getTime(), 'start', now);
 				break;
@@ -108,18 +107,29 @@ exports.handler = (event, context) => {
 				msg =
 						'おつかれさま、バイトの募集は  しめきらせて  もらったよ...  次もまた  よろしくたのむよ';
 				if (start.getTime() > now.getTime()) {
+					console.log('最新データ利用');
 					sendMessage(response[0], msg);
+					updateDynamo(
+						start.getTime() - 1 * 60 * 60 * 1000,
+						'anHour2Start',
+						now
+					);
 				} else {
+					console.log('次回データ利用');
 					sendMessage(response[1], msg);
+					let nextStart = new Date(response[1].start);
+					updateDynamo(
+						nextStart.getTime() - 1 * 60 * 60 * 1000,
+						'anHour2Start',
+						now
+					);
 				}
-				updateDynamo(end.getTime(), 'anHour2Start', now);
 				break;
 			}
+			bot.disconnect();
+			context.succeed('正常終了');
 		} else {
 			console.log('通知なし');
-
-			updateDynamo(end.getTime(), 'end', now);
-
 			bot.disconnect();
 			context.succeed('正常終了');
 		}
