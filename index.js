@@ -75,7 +75,7 @@ exports.handler = (event, context) => {
 		let item = await getFromDynamo(params);
 
 		let msg;
-		/*
+
 		// nextTimeを過ぎて居たらメッセージ送信
 		if (item.nextTime <= now.getTime()) {
 			switch (item.flag) {
@@ -115,65 +115,6 @@ exports.handler = (event, context) => {
 				updateDynamo(end.getTime(), 'anHour2Start', now);
 				break;
 			}
-		} else {
-			console.log('通知なし');
-
-			updateDynamo(end.getTime(), 'end', now);
-
-			bot.disconnect();
-			context.succeed('正常終了');
-		}
-*/
-
-		// 分岐条件はLambdaの起動時間・多少のブレを考慮して幅を持たせている感じ
-		if (
-			// 開始前1時間 (startが今から58分後～62分後)
-			now.getTime() + 62 * 60 * 1000 >= start.getTime() &&
-			now.getTime() + 58 * 60 * 1000 <= start.getTime()
-		) {
-			console.log('開始1時間前処理');
-			msg =
-				'やあ  もうすぐ  アルバイトの募集を  はじめるよ  希望者は  そろそろ準備しておくとい';
-			sendMessage(response[0], msg);
-		} else if (
-			// 終了前2時間 (endが今から118分後～122分後)
-			now.getTime() + 122 * 60 * 1000 >= end.getTime() &&
-			now.getTime() + 108 * 60 * 1000 <= end.getTime()
-		) {
-			console.log('終了2時間前処理');
-			msg =
-				'ふむ  あと2時間で  しめきらせてもらうからね...  ほうしゅうの受け取りを  忘れてはいけないよ';
-			sendMessage(response[0], msg);
-			/*
-    } else if (
-      // 終了前2時間 (endが今から88分後～92分後)
-      now.getTime() + 92 * 60 * 1000 >= end.getTime() &&
-      now.getTime() + 88 * 60 * 1000 <= end.getTime()
-    ) {
-      console.log("終了90分前処理");
-      msg = "まもなくシフトが終了します。";
-      sendMessage(response[0], msg);
-			*/
-		} else if (
-			// 終了時 (endが今から2分前～2分後)
-			now.getTime() - 2 * 60 * 1000 >= end.getTime() &&
-			now.getTime() + 2 * 60 * 1000 <= end.getTime()
-		) {
-			console.log('終了時処理');
-			msg =
-				'おつかれさま、バイトの募集は  しめきらせて  もらったよ...  次もまた  よろしくたのむよ';
-			// 次のシフトをお知らせ
-			sendMessage(response[1], msg);
-		} else if (
-			// 終了時 (startが今から12時間後)
-			now.getTime() + 12.1 * 60 * 60 * 1000 >= start.getTime() &&
-			now.getTime() + 11.9 * 60 * 60 * 1000 <= start.getTime()
-		) {
-			console.log('終了時処理');
-			msg =
-				'おつかれさま、バイトの募集は  しめきらせて  もらったよ...  次もまた  よろしくたのむよ';
-			// 次のシフトをお知らせ
-			sendMessage(response[0], msg);
 		} else {
 			console.log('通知なし');
 
