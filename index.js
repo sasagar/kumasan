@@ -1,5 +1,6 @@
 const https = require('https');
 const token = require('./token.js');
+const AWS = require('aws-sdk');
 
 // BOT_TOKEN は 自身が作成したBotの Bot token の文字を記述します。
 // token.jsでは以下のコードが書かれている
@@ -12,10 +13,16 @@ exports.bot = () => {
 };
 */
 
-let bot = token.bot();
-
 // APIのURL
 const url = 'https://spla2.yuu26.com/coop/schedule';
+
+// dynamoDBに関連した処理
+const docClient = new AWS.DynamoDB.DocumentClient({
+	region: 'ap-northeast-1',
+	apiVersion: '2012-08-10',
+	accessKeyId: process.env.DYNAMO_API_ACCESS_KEY,
+	secretAccessKey: process.env.DYNAMO_USER_SECRET_ACCESS_KEY
+});
 
 let response;
 const ChannelName = 'クマサン商会';
@@ -25,19 +32,19 @@ exports.handler = (event, context) => {
 	let bot = token.bot();
 
 	https
-		.get(url, function(res) {
+		.get(url, res => {
 			let body = '';
 			res.setEncoding('utf8');
-			res.on('data', function(chunk) {
+			res.on('data', chunk => {
 				body += chunk;
 			});
-			res.on('end', function(chunk) {
+			res.on('end', () => {
 				// body の値を json としてパース
 				res = JSON.parse(body);
 				response = res.result;
 			});
 		})
-		.on('error', function(e) {
+		.on('error', e => {
 			console.log(e.message);
 		});
 
@@ -48,15 +55,76 @@ exports.handler = (event, context) => {
 		const now = new Date();
 		const start = new Date(response[0].start);
 		const end = new Date(response[0].end);
-		const nextStart = new Date(response[1].start);
-		const nextEnd = new Date(response[1].end);
+		//const nextStart = new Date(response[1].start);
+		//const nextEnd = new Date(response[1].end);
 		console.log('now: ' + now.getTime());
 		console.log('now+1h: ' + (now.getTime() + 60 * 60 * 1000));
 		console.log('now+2h: ' + (now.getTime() + 120 * 60 * 1000));
 		console.log('now+12h: ' + (now.getTime() + 12 * 60 * 60 * 1000));
 		console.log('start: ' + start.getTime());
 		console.log('end: ' + end.getTime());
+
+		// dynamoDBから前回処理のデータを取得
+		const params = {
+			TableName: 'kumasan',
+			Key: {
+				//取得したい項目をプライマリキー(及びソートキー)によって１つ指定
+				_id: 'last_log'
+			}
+		};
+		let item = await getFromDynamo(params);
+
 		let msg;
+		/*
+		// nextTimeを過ぎて居たらメッセージ送信
+		if (item.nextTime <= now.getTime()) {
+			switch (item.flag) {
+			case 'anHour2Start':
+				console.log('開始1時間前処理');
+				msg =
+						'やあ  もうすぐ  アルバイトの募集を  はじめるよ  希望者は  そろそろ準備しておくとい';
+				sendMessage(response[0], msg);
+				updateDynamo(start.getTime(), 'start', now);
+				break;
+
+			case 'start':
+				console.log('開始時間処理');
+				msg =
+						'サーモンランが  はじまったよ...  今回の現場、支給ブキを  しっかり確認してくれたまえ';
+				sendMessage(response[0], msg);
+				updateDynamo(end.getTime() - 2 * 60 * 60 * 1000, '2Hour2End', now);
+				break;
+
+			case '2Hour2End':
+				console.log('終了2時間前処理');
+				msg =
+						'ふむ  あと2時間で  しめきらせてもらうからね...  ほうしゅうの受け取りを  忘れてはいけないよ';
+				sendMessage(response[0], msg);
+				updateDynamo(end.getTime(), 'end', now);
+				break;
+
+			case 'end':
+				console.log('終了時処理');
+				msg =
+						'おつかれさま、バイトの募集は  しめきらせて  もらったよ...  次もまた  よろしくたのむよ';
+				if (start.getTime() > now.getTime()) {
+					sendMessage(response[0], msg);
+				} else {
+					sendMessage(response[1], msg);
+				}
+				updateDynamo(end.getTime(), 'anHour2Start', now);
+				break;
+			}
+		} else {
+			console.log('通知なし');
+
+			updateDynamo(end.getTime(), 'end', now);
+
+			bot.disconnect();
+			context.succeed('正常終了');
+		}
+*/
+
 		// 分岐条件はLambdaの起動時間・多少のブレを考慮して幅を持たせている感じ
 		if (
 			// 開始前1時間 (startが今から58分後～62分後)
@@ -64,15 +132,17 @@ exports.handler = (event, context) => {
 			now.getTime() + 58 * 60 * 1000 <= start.getTime()
 		) {
 			console.log('開始1時間前処理');
-			msg = 'まもなく始まるシフトのお知らせです。';
+			msg =
+				'やあ  もうすぐ  アルバイトの募集を  はじめるよ  希望者は  そろそろ準備しておくとい';
 			sendMessage(response[0], msg);
 		} else if (
 			// 終了前2時間 (endが今から118分後～122分後)
 			now.getTime() + 122 * 60 * 1000 >= end.getTime() &&
-			now.getTime() + 118 * 60 * 1000 <= end.getTime()
+			now.getTime() + 108 * 60 * 1000 <= end.getTime()
 		) {
 			console.log('終了2時間前処理');
-			msg = 'まもなくシフトが終了します。';
+			msg =
+				'ふむ  あと2時間で  しめきらせてもらうからね...  ほうしゅうの受け取りを  忘れてはいけないよ';
 			sendMessage(response[0], msg);
 			/*
     } else if (
@@ -90,48 +160,91 @@ exports.handler = (event, context) => {
 			now.getTime() + 2 * 60 * 1000 <= end.getTime()
 		) {
 			console.log('終了時処理');
-			msg = 'シフトが終了しましたので、次のシフトのお知らせです。';
+			msg =
+				'おつかれさま、バイトの募集は  しめきらせて  もらったよ...  次もまた  よろしくたのむよ';
 			// 次のシフトをお知らせ
 			sendMessage(response[1], msg);
 		} else if (
 			// 終了時 (startが今から12時間後)
-			now.getTime() + 12.2 * 60 * 60 * 1000 >= start.getTime() &&
-			now.getTime() + 11.8 * 60 * 60 * 1000 <= start.getTime()
+			now.getTime() + 12.1 * 60 * 60 * 1000 >= start.getTime() &&
+			now.getTime() + 11.9 * 60 * 60 * 1000 <= start.getTime()
 		) {
 			console.log('終了時処理');
-			msg = 'シフトが終了しましたので、次のシフトのお知らせです。';
+			msg =
+				'おつかれさま、バイトの募集は  しめきらせて  もらったよ...  次もまた  よろしくたのむよ';
 			// 次のシフトをお知らせ
 			sendMessage(response[0], msg);
 		} else {
 			console.log('通知なし');
-			await bot.disconnect();
+
+			updateDynamo(end.getTime(), 'end', now);
+
+			bot.disconnect();
 			context.succeed('正常終了');
 		}
 	});
 
-	// disconnect時 (上手く拾えてない)
-	/*
-  bot.on("disconnect", () => {
-    console.log("test");
-    context.succeed("正常終了");
-  });
-*/
-
 	// Discord に接続します。
 	bot.connect();
+
+	// DBから読み出す
+	const getFromDynamo = async params => {
+		return new Promise((resolve, reject) => {
+			docClient.get(params, (err, data) => {
+				if (err) {
+					reject(err);
+				} else {
+					resolve(data.Item);
+				}
+			});
+		});
+	};
+
+	// DBのアップデート
+	const updateDynamo = async (nextTime, flag, now) => {
+		const params = {
+			TableName: 'kumasan',
+			Key: {
+				//更新したい項目をプライマリキー(及びソートキー)によって１つ指定
+				_id: 'last_log'
+			},
+			ExpressionAttributeNames: {
+				'#f': 'flag',
+				'#n': 'nextTime',
+				'#u': 'updateTime'
+			},
+			ExpressionAttributeValues: {
+				':newFlag': flag, //flagの値
+				':nextTime': nextTime, //実行したい時間
+				':updateTime': now.getTime() //実行したい時間
+			},
+			UpdateExpression: 'SET #f = :newFlag, #n = :nextTime, #u = :updateTime'
+		};
+		return new Promise((resolve, reject) => {
+			try {
+				resolve(docClient.update(params));
+			} catch (e) {
+				reject(e);
+			}
+		});
+	};
 
 	// exitまでの大まかな処理
 	const sendMessage = (res, msg) => {
 		const promise = new Promise((resolve, reject) => {
-			bot.guilds.forEach(guild => {
-				guild.channels.forEach(channel => {
-					if (channel.name === ChannelName) {
-						// この辺りでresolve必要っぽそう
-						const content = generateShiftFormat(res, msg);
-						resolve(bot.createMessage(channel.id, content));
-					}
+			try {
+				bot.guilds.forEach(guild => {
+					guild.channels.forEach(channel => {
+						if (channel.name === ChannelName) {
+							// この辺りでresolve必要っぽそう
+							const content = generateShiftFormat(res, msg);
+							resolve(bot.createMessage(channel.id, content));
+						}
+					});
 				});
-			});
+			} catch (e) {
+				reject(e);
+			}
 		});
 
 		// 順番に処理
@@ -149,7 +262,7 @@ exports.handler = (event, context) => {
 
 	// メッセージを作る
 	const generateShiftFormat = (data, msg = '') => {
-		const now = new Date();
+		//const now = new Date();
 		const start = new Date(data.start);
 		const end = new Date(data.end);
 		const start_f = datetostr(start, 'MM/DD(WW) hh:mm', false);
@@ -237,7 +350,7 @@ exports.handler = (event, context) => {
 		let replaceStr = '(' + Object.keys(replaceStrArray).join('|') + ')';
 		let regex = new RegExp(replaceStr, 'g');
 
-		ret = format.replace(regex, function(str) {
+		let ret = format.replace(regex, function(str) {
 			return replaceStrArray[str];
 		});
 
