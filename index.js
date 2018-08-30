@@ -1,11 +1,11 @@
 const https = require('https');
-const token = require('./token.js');
+//const token = require('./token.js');
 const AWS = require('aws-sdk');
+const Eris = require('eris');
 
 // BOT_TOKEN は 自身が作成したBotの Bot token の文字を記述します。
 // token.jsでは以下のコードが書かれている
 /*
-const Eris = require("eris");
 
 exports.bot = () => {
   const bot = new Eris("YOUR_TOKEN");
@@ -29,7 +29,7 @@ const ChannelName = 'クマサン商会';
 
 exports.handler = (event, context) => {
 	// lambdaでは保持される部分があるので、短時間Cronに耐えられるよう毎回handlerないでbotを生成
-	let bot = token.bot();
+	let bot = new Eris(process.env.DISCORD_TOKEN);
 
 	https
 		.get(url, res => {
@@ -57,21 +57,14 @@ exports.handler = (event, context) => {
 		const end = new Date(response[0].end);
 		//const nextStart = new Date(response[1].start);
 		//const nextEnd = new Date(response[1].end);
-		console.log('now: ' + now.getTime());
-		console.log('start: ' + start.getTime());
-		console.log('end: ' + end.getTime());
+		console.info('now: ' + now.getTime());
+		console.info('start: ' + start.getTime());
+		console.info('end: ' + end.getTime());
 
 		// dynamoDBから前回処理のデータを取得
-		const params = {
-			TableName: 'kumasan',
-			Key: {
-				//取得したい項目をプライマリキー(及びソートキー)によって１つ指定
-				_id: 'last_log'
-			}
-		};
-		let item = await getFromDynamo(params);
-		console.log('flag: ' + item.flag);
-		console.log('nextTime: ' + item.nextTime);
+		let item = await getFromDynamo();
+		console.info('flag: ' + item.flag);
+		console.info('nextTime: ' + item.nextTime);
 
 		let msg;
 
@@ -79,46 +72,50 @@ exports.handler = (event, context) => {
 		if (item.nextTime <= now.getTime()) {
 			switch (item.flag) {
 			case 'anHour2Start':
-				console.log('開始1時間前処理');
+				console.info('開始1時間前処理');
 				msg =
 						'やあ  もうすぐ  アルバイトの募集を  はじめるよ  希望者は  そろそろ準備しておくといい';
-				sendMessage(response[0], msg);
-				updateDynamo(start.getTime(), 'start', now);
+				await sendMessage(response[0], msg);
+				await updateDynamo(start.getTime(), 'start', now);
 				break;
 
 			case 'start':
-				console.log('開始時間処理');
+				console.info('開始時間処理');
 				msg =
 						'サーモンランが  はじまったよ...  今回の現場、支給ブキを  しっかり確認してくれたまえ';
-				sendMessage(response[0], msg);
-				updateDynamo(end.getTime() - 2 * 60 * 60 * 1000, '2Hour2End', now);
+				await sendMessage(response[0], msg);
+				await updateDynamo(
+					end.getTime() - 2 * 60 * 60 * 1000,
+					'2Hour2End',
+					now
+				);
 				break;
 
 			case '2Hour2End':
-				console.log('終了2時間前処理');
+				console.info('終了2時間前処理');
 				msg =
 						'ふむ  あと2時間で  しめきらせてもらうからね...  ほうしゅうの受け取りを  忘れてはいけないよ';
-				sendMessage(response[0], msg);
-				updateDynamo(end.getTime(), 'end', now);
+				await sendMessage(response[0], msg);
+				await updateDynamo(end.getTime(), 'end', now);
 				break;
 
 			case 'end':
-				console.log('終了時処理');
+				console.info('終了時処理');
 				msg =
 						'おつかれさま、バイトの募集は  しめきらせて  もらったよ...  次もまた  よろしくたのむよ';
 				if (start.getTime() > now.getTime()) {
-					console.log('最新データ利用');
-					sendMessage(response[0], msg);
-					updateDynamo(
+					console.info('最新データ利用');
+					await sendMessage(response[0], msg);
+					await updateDynamo(
 						start.getTime() - 1 * 60 * 60 * 1000,
 						'anHour2Start',
 						now
 					);
 				} else {
-					console.log('次回データ利用');
-					sendMessage(response[1], msg);
+					console.info('次回データ利用');
+					await sendMessage(response[1], msg);
 					let nextStart = new Date(response[1].start);
-					updateDynamo(
+					await updateDynamo(
 						nextStart.getTime() - 1 * 60 * 60 * 1000,
 						'anHour2Start',
 						now
@@ -126,11 +123,11 @@ exports.handler = (event, context) => {
 				}
 				break;
 			}
-			bot.disconnect();
+			await bot.disconnect();
 			context.succeed('正常終了');
 		} else {
-			console.log('通知なし');
-			bot.disconnect();
+			console.info('通知なし');
+			await bot.disconnect();
 			context.succeed('正常終了');
 		}
 	});
@@ -139,7 +136,15 @@ exports.handler = (event, context) => {
 	bot.connect();
 
 	// DBから読み出す
-	const getFromDynamo = async params => {
+	const getFromDynamo = async () => {
+		const params = {
+			TableName: 'kumasan',
+			Key: {
+				//取得したい項目をプライマリキー(及びソートキー)によって１つ指定
+				_id: 'last_log'
+			}
+		};
+
 		return new Promise((resolve, reject) => {
 			docClient.get(params, (err, data) => {
 				if (err) {
@@ -152,7 +157,7 @@ exports.handler = (event, context) => {
 	};
 
 	// DBのアップデート
-	const updateDynamo = async (nextTime, flag, now) => {
+	const updateDynamo = (nextTime, flag, now) => {
 		const params = {
 			TableName: 'kumasan',
 			Key: {
@@ -171,23 +176,16 @@ exports.handler = (event, context) => {
 			},
 			UpdateExpression: 'SET #f = :newFlag, #n = :nextTime, #u = :updateTime'
 		};
-		return new Promise((resolve, reject) => {
-			try {
-				resolve(docClient.update(params));
-			} catch (e) {
-				reject(e);
-			}
-		});
+		return docClient.update(params).promise();
 	};
 
 	// exitまでの大まかな処理
 	const sendMessage = (res, msg) => {
-		const promise = new Promise((resolve, reject) => {
+		return new Promise((resolve, reject) => {
 			try {
 				bot.guilds.forEach(guild => {
 					guild.channels.forEach(channel => {
 						if (channel.name === ChannelName) {
-							// この辺りでresolve必要っぽそう
 							const content = generateShiftFormat(res, msg);
 							resolve(bot.createMessage(channel.id, content));
 						}
@@ -197,18 +195,6 @@ exports.handler = (event, context) => {
 				reject(e);
 			}
 		});
-
-		// 順番に処理
-		promise
-			.then(() => {
-				bot.disconnect();
-				context.succeed('正常終了');
-			})
-			.catch(e => {
-				context.fail(e);
-				process.exit(1);
-				bot.disconnect();
-			});
 	};
 
 	// メッセージを作る
@@ -241,12 +227,13 @@ exports.handler = (event, context) => {
 			embeds.fields.push({
 				name: '支給ブキ',
 				value:
+					'・ ' +
 					data.weapons[0].name +
-					'・' +
-					data.weapons[2].name +
-					'・' +
+					'\n・ ' +
 					data.weapons[1].name +
-					'・' +
+					'\n・ ' +
+					data.weapons[2].name +
+					'\n・ ' +
 					data.weapons[3].name
 			});
 		} else {

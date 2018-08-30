@@ -1,26 +1,26 @@
 {
-  "name": "kumasan",
-  "version": "1.0.0",
-  "description": "Splatoon2のサーモンランのスケジュールをお知らせするDiscord用Bot",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "zip": "zip --quiet -r kumasan.zip index.js token.js node_modules/",
-    "upload": "aws lambda update-function-code --function-name kumasan --zip-file fileb://./kumasan.zip",
-    "deploy": "npm run zip && npm run upload && rm -f ./kumasan.zip"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/sasagar/kumasan.git"
-  },
-  "author": "SASAGAWA, Kiyoshi",
-  "license": "GPL-3.0",
-  "bugs": {
-    "url": "https://github.com/sasagar/kumasan/issues"
-  },
-  "homepage": "https://github.com/sasagar/kumasan#readme",
-  "dependencies": {
-    "aws-sdk": "^2.304.0",
-    "eris": "^0.9.0"
-  }
+	"name": "kumasan",
+	"version": "2.0.0",
+	"description": "Splatoon2のサーモンランのスケジュールをお知らせするDiscord用Bot",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"zip": "zip --quiet -r kumasan.zip index.js node_modules/",
+		"upload": "aws lambda update-function-code --function-name kumasan --zip-file fileb://./kumasan.zip",
+		"deploy": "npm run zip && npm run upload && rm -f ./kumasan.zip"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/sasagar/kumasan.git"
+	},
+	"author": "SASAGAWA, Kiyoshi",
+	"license": "GPL-3.0",
+	"bugs": {
+		"url": "https://github.com/sasagar/kumasan/issues"
+	},
+	"homepage": "https://github.com/sasagar/kumasan#readme",
+	"dependencies": {
+		"aws-sdk": "^2.304.0",
+		"eris": "^0.9.0"
+	}
 }
