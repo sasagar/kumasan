@@ -111,6 +111,7 @@ exports.handler = (event, context) => {
 						'anHour2Start',
 						now
 					);
+					await sendLaterShift([response[1], response[2], response[3]]);
 				} else {
 					console.info('次回データ利用');
 					await sendMessage(response[1], msg);
@@ -120,12 +121,15 @@ exports.handler = (event, context) => {
 						'anHour2Start',
 						now
 					);
+					await sendLaterShift([response[2], response[3], response[4]]);
 				}
 				break;
 			}
 			await bot.disconnect();
 			context.succeed('正常終了');
 		} else {
+			// for debug
+			//await sendLaterShift([response[1], response[2], response[3]]);
 			console.info('通知なし');
 			await bot.disconnect();
 			context.succeed('正常終了');
@@ -179,7 +183,7 @@ exports.handler = (event, context) => {
 		return docClient.update(params).promise();
 	};
 
-	// exitまでの大まかな処理
+	// メッセージ送信処理
 	const sendMessage = (res, msg) => {
 		return new Promise((resolve, reject) => {
 			try {
@@ -188,6 +192,48 @@ exports.handler = (event, context) => {
 						if (channel.name === ChannelName) {
 							const content = generateShiftFormat(res, msg);
 							resolve(bot.createMessage(channel.id, content));
+						}
+					});
+				});
+			} catch (e) {
+				reject(e);
+			}
+		});
+	};
+
+	// 今後のシフト告知メッセージ送信処理
+	const sendLaterShift = data => {
+		return new Promise((resolve, reject) => {
+			try {
+				let fields = [];
+
+				for (let shift in data) {
+					const start = new Date(data[shift].start);
+					const end = new Date(data[shift].end);
+					const start_f = datetostr(start, 'MM/DD(WW) hh:mm', false);
+					const end_f = datetostr(end, 'MM/DD(WW) hh:mm', false);
+					fields.push({
+						name: 'シフト',
+						value: start_f + ' ～ ' + end_f
+					});
+				}
+
+				const embeds = {
+					color: parseInt('e55833', 16),
+					fields: fields
+				};
+
+				const content = {
+					content: '次回以降のシフト',
+					embed: embeds
+				};
+
+				//console.log(content);
+				bot.guilds.forEach(guild => {
+					guild.channels.forEach(channel => {
+						if (channel.name === ChannelName) {
+							resolve(bot.createMessage(channel.id, content));
+							//resolve();
 						}
 					});
 				});
