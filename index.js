@@ -205,18 +205,31 @@ exports.handler = (event, context) => {
 	const sendLaterShift = data => {
 		return new Promise((resolve, reject) => {
 			try {
-				let fields = [];
+				let tmpFields = [];
 
 				for (let shift in data) {
 					const start = new Date(data[shift].start);
 					const end = new Date(data[shift].end);
 					const start_f = datetostr(start, 'MM/DD(WW) hh:mm', false);
 					const end_f = datetostr(end, 'MM/DD(WW) hh:mm', false);
-					fields.push({
+					tmpFields.push({
 						name: 'シフト',
 						value: start_f + ' ～ ' + end_f
 					});
 				}
+
+				const fields = [
+					{
+						name: '次回以降のシフト',
+						value:
+							'・ ' +
+							tmpFields[0].value +
+							'\n・ ' +
+							tmpFields[1].value +
+							'\n・ ' +
+							tmpFields[2].value
+					}
+				];
 
 				const embeds = {
 					color: parseInt('e55833', 16),
@@ -224,7 +237,7 @@ exports.handler = (event, context) => {
 				};
 
 				const content = {
-					content: '次回以降のシフト',
+					//content: '次回以降のシフト',
 					embed: embeds
 				};
 
